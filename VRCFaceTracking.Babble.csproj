@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="VRCFaceTracking\**" />
+    <EmbeddedResource Remove="VRCFaceTracking\**" />
+    <None Remove="VRCFaceTracking\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="BabbleLogo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="BabbleLogo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="VRCFaceTracking\VRCFaceTracking.Core\VRCFaceTracking.Core.csproj" />
+    <ProjectReference Include="VRCFaceTracking\VRCFaceTracking.SDK\VRCFaceTracking.SDK.csproj" />
+  </ItemGroup>
+  
+
+</Project>
