@@ -57,6 +57,11 @@ public class BabbleVRC : ExtTrackingModule
     {
         if (Status == ModuleState.Active)
         {
+            foreach (var expression in BabbleExpressions.BabbleExpressionMap!)
+            {
+                UnifiedTracking.Data.Shapes[(int) expression].Weight = BabbleExpressions.BabbleExpressionMap.GetByKey1(expression);
+            }
+
             // LEFT EYE
             UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.EyeWideLeft].Weight =
                 BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeLeftWiden];
