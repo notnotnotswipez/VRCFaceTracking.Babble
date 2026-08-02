@@ -19,6 +19,9 @@ public class BabbleVRC : ExtTrackingModule
     private LowPassFilter? m_leftEyeOpenLowPass;
     private LowPassFilter? m_rightEyeOpenLowPass;
 
+    bool needsEye = false;
+    bool needsExpression = false;
+
     public override (bool eyeSuccess, bool expressionSuccess) Initialize(bool eyeAvailable, bool expressionAvailable)
     {
         Config babbleConfig = BabbleConfig.GetBabbleConfig();
@@ -35,6 +38,10 @@ public class BabbleVRC : ExtTrackingModule
             return (false, false);
         }
 
+        needsEye = babbleConfig.IsEyeSupported;
+        needsExpression = babbleConfig.IsFaceSupported;
+        Logger.LogInformation($"Proceeding with babble config settings: Eye Support: {needsEye}, Face Support: {needsExpression}");
+
 
         m_leftEyeOpenLowPass = new LowPassFilter(k_noiseFilterSamples);
         m_rightEyeOpenLowPass = new LowPassFilter(k_noiseFilterSamples);
@@ -44,7 +51,7 @@ public class BabbleVRC : ExtTrackingModule
             Name = "Project Babble Module (PSVR2ToolKit Modified) v3.1.0",
             StaticImages = list
         };
-        return (true, true);
+        return (needsEye, needsExpression);
     }
 
     public override void Teardown()
@@ -57,107 +64,114 @@ public class BabbleVRC : ExtTrackingModule
     {
         if (Status == ModuleState.Active)
         {
-            foreach (var expression in BabbleExpressions.BabbleExpressionMap!)
-            {
-                UnifiedTracking.Data.Shapes[(int) expression].Weight = BabbleExpressions.BabbleExpressionMap.GetByKey1(expression);
-            }
-
-            // LEFT EYE
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.EyeWideLeft].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeLeftWiden];
-
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.EyeSquintLeft].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeLeftSquint];
-
-            // BROW
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.BrowLowererLeft].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeLeftLower];
-
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.BrowPinchLeft].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeLeftLower];
-            
-
-            // RIGHT EYE
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.EyeWideRight].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeRightWiden];
-
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.EyeSquintRight].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeRightSquint];
-
-            // BROW
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.BrowLowererRight].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeRightLower];
-
-            UnifiedTracking.Data.Shapes[(int)UnifiedExpressions.BrowPinchRight].Weight =
-                BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeRightLower];
-
-            hmd2_gaze_status_t gazeStatus = new hmd2_gaze_status_t();
-
-            if (!PSVR2ToolkitCAPI.GetGazeStatus(ref gazeStatus, 1000))
-            {
-                return;
-            }
-
-            if (gazeStatus.wearable.left.is_blink_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
-            {
-                float leftOpenness = gazeStatus.wearable.left.blink == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE ? 0 : 1;
-
-                if (m_leftEyeOpenLowPass != null)
+            if (needsExpression) {
+                foreach (var expression in BabbleExpressions.BabbleExpressionMap!)
                 {
-                    leftOpenness = m_leftEyeOpenLowPass.FilterValue(leftOpenness);
+                    UnifiedTracking.Data.Shapes[(int) expression].Weight = BabbleExpressions.BabbleExpressionMap.GetByKey1(expression);
                 }
+            }
 
-                if (leftOpenness < 0.9f)
+
+            if (needsEye) {
+                // LEFT EYE
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.EyeWideLeft].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeLeftWiden];
+
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.EyeSquintLeft].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeLeftSquint];
+
+                // BROW
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.BrowLowererLeft].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeLeftLower];
+
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.BrowPinchLeft].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeLeftLower];
+
+
+                // RIGHT EYE
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.EyeWideRight].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeRightWiden];
+
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.EyeSquintRight].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeRightSquint];
+
+                // BROW
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.BrowLowererRight].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeRightLower];
+
+                UnifiedTracking.Data.Shapes[(int) UnifiedExpressions.BrowPinchRight].Weight =
+                    BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeRightLower];
+
+                hmd2_gaze_status_t gazeStatus = new hmd2_gaze_status_t();
+
+                if (!PSVR2ToolkitCAPI.GetGazeStatus(ref gazeStatus, 1000))
                 {
-                    UnifiedTracking.Data.Eye.Left.Openness = leftOpenness;
+                    return;
                 }
-                else {
-                    // Fall to babbles openness
-                    UnifiedTracking.Data.Eye.Left.Openness = BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeLeftLid];
-                }
-            }
 
-            if (gazeStatus.wearable.right.is_blink_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
-            {
-                float rightOpenness = gazeStatus.wearable.right.blink == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE ? 0 : 1;
-
-                if (m_rightEyeOpenLowPass != null)
+                if (gazeStatus.wearable.left.is_blink_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
                 {
-                    rightOpenness = m_rightEyeOpenLowPass.FilterValue(rightOpenness);
+                    float leftOpenness = gazeStatus.wearable.left.blink == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE ? 0 : 1;
+
+                    if (m_leftEyeOpenLowPass != null)
+                    {
+                        leftOpenness = m_leftEyeOpenLowPass.FilterValue(leftOpenness);
+                    }
+
+                    if (leftOpenness < 0.9f)
+                    {
+                        UnifiedTracking.Data.Eye.Left.Openness = leftOpenness;
+                    }
+                    else
+                    {
+                        // Fall to babbles openness
+                        UnifiedTracking.Data.Eye.Left.Openness = BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeLeftLid];
+                    }
                 }
 
-                if (rightOpenness < 0.9f)
+                if (gazeStatus.wearable.right.is_blink_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
                 {
-                    UnifiedTracking.Data.Eye.Right.Openness = rightOpenness;
+                    float rightOpenness = gazeStatus.wearable.right.blink == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE ? 0 : 1;
+
+                    if (m_rightEyeOpenLowPass != null)
+                    {
+                        rightOpenness = m_rightEyeOpenLowPass.FilterValue(rightOpenness);
+                    }
+
+                    if (rightOpenness < 0.9f)
+                    {
+                        UnifiedTracking.Data.Eye.Right.Openness = rightOpenness;
+                    }
+                    else
+                    {
+                        // Fall to babbles openness
+                        UnifiedTracking.Data.Eye.Right.Openness = BabbleOsc.EyeExpressions[(int) ExpressionMapping.EyeRightLid];
+                    }
                 }
-                else {
-                    // Fall to babbles openness
-                    UnifiedTracking.Data.Eye.Right.Openness = BabbleOsc.EyeExpressions[(int)ExpressionMapping.EyeRightLid];
+
+                if (gazeStatus.wearable.left.is_gaze_dir_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
+                {
+                    UnifiedTracking.Data.Eye.Left.Gaze = new Vector2(gazeStatus.wearable.left.gaze_dir_norm.x, gazeStatus.wearable.left.gaze_dir_norm.y).FlipXCoordinates();
                 }
-            }
 
-            if (gazeStatus.wearable.left.is_gaze_dir_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
-            {
-                UnifiedTracking.Data.Eye.Left.Gaze = new Vector2(gazeStatus.wearable.left.gaze_dir_norm.x, gazeStatus.wearable.left.gaze_dir_norm.y).FlipXCoordinates();
-            }
+                if (gazeStatus.wearable.right.is_gaze_dir_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
+                {
+                    UnifiedTracking.Data.Eye.Right.Gaze = new Vector2(gazeStatus.wearable.right.gaze_dir_norm.x, gazeStatus.wearable.right.gaze_dir_norm.y).FlipXCoordinates();
+                }
 
-            if (gazeStatus.wearable.right.is_gaze_dir_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
-            {
-                UnifiedTracking.Data.Eye.Right.Gaze = new Vector2(gazeStatus.wearable.right.gaze_dir_norm.x, gazeStatus.wearable.right.gaze_dir_norm.y).FlipXCoordinates();
-            }
+                if (gazeStatus.wearable.left.is_pupil_dia_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
+                {
+                    UnifiedTracking.Data.Eye.Left.PupilDiameter_MM = gazeStatus.wearable.left.pupil_dia_mm;
+                }
+                if (gazeStatus.wearable.right.is_pupil_dia_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
+                {
+                    UnifiedTracking.Data.Eye.Right.PupilDiameter_MM = gazeStatus.wearable.right.pupil_dia_mm;
+                }
 
-            if (gazeStatus.wearable.left.is_pupil_dia_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
-            {
-                UnifiedTracking.Data.Eye.Left.PupilDiameter_MM = gazeStatus.wearable.left.pupil_dia_mm;
+                // Force the normalization values of Dilation to fit avg. pupil values.
+                UnifiedTracking.Data.Eye._minDilation = 0;
+                UnifiedTracking.Data.Eye._maxDilation = 10;
             }
-            if (gazeStatus.wearable.right.is_pupil_dia_valid == hmd2_gaze_bool_t.HMD2_GAZE_BOOL_TRUE)
-            {
-                UnifiedTracking.Data.Eye.Right.PupilDiameter_MM = gazeStatus.wearable.right.pupil_dia_mm;
-            }
-
-            // Force the normalization values of Dilation to fit avg. pupil values.
-            UnifiedTracking.Data.Eye._minDilation = 0;
-            UnifiedTracking.Data.Eye._maxDilation = 10;
         }
 
         Thread.Sleep(10);
